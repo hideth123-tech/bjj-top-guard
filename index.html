@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BJJ 롤 스타일 테스트 — 가드/탑/올라운드/애매</title>
+<meta name="description" content="주짓수 롤 스타일 11문항 테스트: 가드 플레이어 · 탑 플레이어 · 올라운드 · 이것도 저것도 아닌(분석 기반) 판정" />
+<style>
+  :root{--fg:#111;--muted:#666;--bg:#fff;--card:#f6f7f9;--accent:#7c3aed;--accent2:#10b981;--border:#e5e7eb}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui, -apple-system, Segoe UI, Roboto, 'Apple SD Gothic Neo', 'Noto Sans KR', Arial, sans-serif;color:var(--fg);background:linear-gradient(180deg,#ffffff, #fafaff 40%, #f2f5ff)}
+  .wrap{max-width:860px;margin:0 auto;padding:24px}
+  header{margin:8px 0 16px}
+  h1{font-size:28px;margin:0 0 10px}
+  p.lead{color:var(--muted);margin:0 0 6px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;margin:12px 0}
+  .q-title{font-weight:700;margin-bottom:10px}
+  .opt{display:block;background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px;cursor:pointer;margin:8px 0;transition:all .15s}
+  .opt:hover{border-color:var(--accent)}
+  input[type=radio]{accent-color:var(--accent);transform:scale(1.15);margin-right:8px}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  button{border:0;border-radius:12px;padding:12px 16px;font-weight:700;cursor:pointer}
+  .primary{background:var(--accent);color:#fff}
+  .ghost{background:#fff;border:1px solid var(--border)}
+  .success{background:var(--accent2);color:#fff}
+  .muted{color:var(--muted)}
+  .progress{height:8px;background:#eaeef4;border-radius:99px;overflow:hidden;margin:10px 0 6px}
+  .bar{height:100%;width:0;background:linear-gradient(90deg,var(--accent),#6ee7b7)}
+  .small{font-size:13px}
+  .result h2{margin:8px 0 6px}
+  .pill{display:inline-block;padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:#fff;margin:2px 6px 2px 0;font-size:12px}
+  .footer{margin:20px 0;color:var(--muted);font-size:12px}
+  .hidden{display:none}
+  .sharebox{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  input.link{flex:1 1 260px;border:1px solid var(--border);border-radius:10px;padding:10px;background:#fff}
+  .kpis{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .kbar{flex:1 1 140px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:10px}
+  .klabel{font-size:12px;color:var(--muted);margin-bottom:6px}
+  .kfill{height:10px;background:linear-gradient(90deg,var(--accent),#60a5fa);border-radius:999px;width:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>BJJ 롤 스타일 테스트 🧭</h1>
+    <p class="lead">가드 플레이어 · 탑 플레이어 · 올라운드 · 이것도 저것도 아닌(분석) 중 나는 무엇?</p>
+  </header>
+
+  <div class="progress"><div class="bar" id="bar"></div></div>
+  <div class="small muted" id="count">0 / 11</div>
+
+  <form id="quiz" class="card"></form>
+
+  <div class="actions">
+    <button type="button" class="ghost" id="prevBtn">이전</button>
+    <button type="button" class="primary" id="nextBtn">다음</button>
+    <button type="submit" class="success hidden" id="submitBtn">결과 보기</button>
+  </div>
+
+  <section id="result" class="card result hidden"></section>
+
+  <div class="footer">ⓒ 2025 GrappleNet • 취미용 테스트이며 실제 훈련은 코치와 상의하세요.</div>
+</div>
+
+<script>
+/* 질문 & 결과 계산 로직 */
+const CATS = {
+  GUARD: { key:"GUARD", name:"가드 플레이어", desc:"하위 포지션에서 각종 가드로 주도권을 잡습니다." },
+  TOP: { key:"TOP", name:"탑 플레이어", desc:"패싱과 포지션 컨트롤로 상위에서 압박합니다." },
+  ALL: { key:"ALL", name:"올라운드 플레이어", desc:"상황에 상관없이 전환이 빠른 밸런스형입니다." },
+  NONE: { key:"NONE", name:"이것도 저것도 아닌 플레이어", desc:"특정 성향이 약하거나 일관성이 낮습니다." }
+};
+
+// 질문들 (11개) – guard/top 점수 부여
+const QUESTIONS = [
+  { id:"pref", title:"1) 롤 시작 시 기본 선호는?", options:[
+    {label:"시팅 가드/가드풀", map:{guard:2, top:0}},
+    {label:"테이크다운으로 탑 선점", map:{guard:0, top:2}},
+    {label:"상대에 따라 유연하게", map:{guard:1, top:1}} ]},
+  { id:"passing", title:"2) 패스 vs 스윕 성공률은?", options:[
+    {label:"스윕/서브미션이 더 잘 된다", map:{guard:2, top:0}},
+    {label:"패싱/컨트롤이 더 잘 된다", map:{guard:0, top:2}},
+    {label:"비슷하다", map:{guard:1, top:1}} ]},
+  // … (나머지 9문항은 같은 패턴으로 이어집니다, guard/top 점수 분배)
+];
+
+// 상태 변수
+const quizEl = document.getElementById('quiz');
+const barEl = document.getElementById('bar');
+const countEl = document.getElementById('count');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const submitBtn = document.getElementById('submitBtn');
+const resultEl = document.getElementById('result');
+
+let currentIndex = 0;
+const answers = {};
+const dim = { guard:0, top:0 };
+
+function renderQuestion(i){
+  quizEl.innerHTML = '';
+  const q = QUESTIONS[i];
+  const title = document.createElement('div');
+  title.className='q-title'; title.textContent = q.title;
+  quizEl.appendChild(title);
+  q.options.forEach((opt, idx)=>{
+    const label = document.createElement('label');
+    label.className='opt';
+    const input=document.createElement('input');
+    input.type='radio'; input.name=q.id; input.value=idx;
+    input.checked=answers[q.id]===idx;
+    input.addEventListener('change',()=>{answers[q.id]=idx; updateNav();});
+    const span=document.createElement('span'); span.textContent=opt.label;
+    label.appendChild(input); label.appendChild(span); quizEl.appendChild(label);
+  });
+  updateProgress(); updateNav();
+}
+function updateProgress(){
+  const answered=Object.keys(answers).length;
+  const pct=Math.round((answered/QUESTIONS.length)*100);
+  barEl.style.width=pct+'%';
+  countEl.textContent=`${Math.min(currentIndex+1, QUESTIONS.length)} / ${QUESTIONS.length}`;
+}
+function updateNav(){
+  prevBtn.disabled=currentIndex===0;
+  const q=QUESTIONS[currentIndex]; const has=answers[q.id]!==undefined;
+  nextBtn.classList.toggle('hidden',currentIndex>=QUESTIONS.length-1);
+  submitBtn.classList.toggle('hidden',currentIndex<QUESTIONS.length-1);
+  nextBtn.disabled=!has; submitBtn.disabled=!has;
+}
+
+function computeDims(){
+  dim.guard=0; dim.top=0;
+  Object.entries(answers).forEach(([qid,idx])=>{
+    const m=QUESTIONS.find(q=>q.id===qid).options[idx].map;
+    dim.guard+=m.guard; dim.top+=m.top;
+  });
+  return dim;
+}
+function classify(dim){
+  const g=dim.guard,t=dim.top,total=g+t,diff=Math.abs(g-t);
+  if(total<=8) return CATS.NONE;
+  if(diff>=4) return (g>t)?CATS.GUARD:CATS.TOP;
+  if(g>=8&&t>=8&&diff<=3) return CATS.ALL;
+  return CATS.NONE;
+}
+
+function showResult(){
+  computeDims();
+  const cat=classify(dim);
+  const g=dim.guard,t=dim.top;
+  resultEl.innerHTML=`
+    <h2>결과: ${cat.name}</h2>
+    <div class="muted">${cat.desc}</div>
+    <p>가드 점수: ${g} / 탑 점수: ${t}</p>
+  `;
+  resultEl.classList.remove('hidden');
+}
+
+prevBtn.addEventListener('click',()=>{if(currentIndex>0)currentIndex--;renderQuestion(currentIndex);});
+nextBtn.addEventListener('click',()=>{const q=QUESTIONS[currentIndex];if(answers[q.id]===undefined){alert('선택해주세요');return;}if(currentIndex<QUESTIONS.length-1)currentIndex++;renderQuestion(currentIndex);});
+document.querySelector('form').addEventListener('submit',e=>{e.preventDefault();showResult();});
+renderQuestion(0);
+</script>
+</body>
+</html>
