@@ -68,7 +68,7 @@
 
   <section id="result" class="card result hidden"></section>
 
-  <div class="footer">ⓒ 2025 GrappleNet • 취미용 테스트이며 실제 훈련은 코치와 상의하세요.</div>
+  <div class="footer">ⓒ 2025 MK Corporation • 취미용 테스트이며 실제 훈련은 코치와 상의하세요.</div>
 </div>
 
 <script>
@@ -182,4 +182,206 @@ function updateProgress(){
 function updateNav(){
   prevBtn.disabled = currentIndex===0;
   const q = QUESTIONS[currentIndex];
-  const hasAnswer = answers[q.id] !== undefined
+  const hasAnswer = answers[q.id] !== undefined;
+  nextBtn.classList.toggle('hidden', currentIndex >= QUESTIONS.length-1);
+  submitBtn.classList.toggle('hidden', currentIndex < QUESTIONS.length-1);
+  nextBtn.disabled = !hasAnswer;
+  submitBtn.disabled = !hasAnswer;
+}
+
+/* ======= 분석 로직 ======= */
+function computeDims(){
+  dim.guard = 0; dim.top = 0;
+  Object.entries(answers).forEach(([qid, idx])=>{
+    const opt = QUESTIONS.find(q=>q.id===qid).options[idx];
+    dim.guard += opt.map.guard; dim.top += opt.map.top;
+  });
+  return dim;
+}
+
+// 임계값: 총점 낮거나, 격차가 작은 경우 → NONE(유머)
+function classify(g, t){
+  const total = g + t;
+  const diff  = Math.abs(g - t);
+  if (total <= 8) return CATS.NONE;      // 데이터 부족/일관성 낮음
+  if (diff <= 2)  return CATS.NONE;      // 거의 비등비등
+  return (g > t) ? CATS.GUARD : CATS.TOP;
+}
+
+function collectDrivers(){
+  const hints = new Map();   // hint -> count
+  const tags  = new Map();   // tag  -> count
+  Object.entries(answers).forEach(([qid, idx])=>{
+    const opt = QUESTIONS.find(q=>q.id===qid).options[idx];
+    if (opt.hint) hints.set(opt.hint, (hints.get(opt.hint)||0)+1);
+    (opt.tags||[]).forEach(t=> tags.set(t, (tags.get(t)||0)+1));
+  });
+  // 상위 5개만 추려서 반환
+  const topHints = [...hints.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5).map(([k])=>k);
+  const topTags  = [...tags.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k])=>k);
+  return { topHints, topTags };
+}
+
+function coachTipsFor(cat){
+  if (cat.key === "TOP") return [
+    "니컷·롱스텝·토리안도 3체인 속도 유지",
+    "헤드포지션/언더훅 우선 — 베이스 깨지지 않기",
+    "패스→사이드→마운트 3초 규칙(컨트롤 시간 확보)",
+    "탑 서브(초크/암트라) 피니시 루틴 정형화"
+  ];
+  if (cat.key === "GUARD") return [
+    "리텐션 루틴(그란비/힙스케이프) 5분 드릴",
+    "언밸런싱→스윕 2-3단 연결(버터플라이/사이즈업)",
+    "가드에서 이중 위협(스윕+서브) 각도 만들기",
+    "그립 파이팅/프레임 디테일(손 위치, 각도, 타이밍)"
+  ];
+  // NONE (유머 + 개선 포인트 가볍게)
+  return [
+    "오늘 컨디션: '랜덤 셀렉트' 🎲 — 다음 롤에서 단 하나의 목표만!",
+    "가드 1종·패스 1종을 '고정픽'으로 선택해 성공률 체크",
+    "업/다운 기본기(스탠스·레벨체인지) 10분 루틴",
+    "자주 막히는 상황 하나만 메모하고 바로 복기"
+  ];
+}
+
+function showResult(){
+  computeDims();
+  const g = dim.guard, t = dim.top;
+  const cat = classify(g, t);
+  const total = g + t;
+  const diff  = Math.abs(g - t);
+  const guardPct = Math.round((g/22)*100);
+  const topPct   = Math.round((t/22)*100);
+  const consist  = (total>0) ? Math.round((diff/total)*100) : 0; // 일관성 지수(%)
+
+  const { topHints, topTags } = collectDrivers();
+  const tips = coachTipsFor(cat).map(t=>`<span class="pill">${t}</span>`).join('');
+
+  // 결과 헤더 문구(유머 포함)
+  let headline = `결과: ${cat.name}`;
+  let subline  = cat.desc;
+  if (cat.key === "NONE") {
+    headline = "결과: 판단 보류 😅";
+    subline  = "가드/탑 지표가 비슷하거나 데이터가 부족해요. 오늘은 '다재다능'으로 포장해봅시다!";
+  }
+
+  // 공유 링크 (점수 포함)
+  const payload = { g, t, v:2, cat:cat.key };
+  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  const shareUrl = `${location.origin}${location.pathname}#r=${encoded}`;
+
+  resultEl.innerHTML = `
+    <h2>${headline}</h2>
+    <div class="muted">${subline}</div>
+
+    <div class="grid" style="margin-top:10px">
+      <div class="card" style="background:#fff">
+        <div class="kpis">
+          <div class="kbar">
+            <div class="klabel">가드 성향</div>
+            <div class="kfill" id="kg" style="width:${guardPct}%"></div>
+            <div class="small muted" style="margin-top:6px">${g} / 22 (${guardPct}%)</div>
+          </div>
+          <div class="kbar">
+            <div class="klabel">탑 성향</div>
+            <div class="kfill2" id="kt" style="width:${topPct}%"></div>
+            <div class="small muted" style="margin-top:6px">${t} / 22 (${topPct}%)</div>
+          </div>
+        </div>
+
+        <div class="callout" style="margin-top:12px">
+          <div class="small muted">일관성 지수</div>
+          <div style="margin-top:4px;font-weight:700">${consist}%</div>
+          <div class="small muted">※ 값이 높을수록 한쪽 성향이 뚜렷합니다.</div>
+        </div>
+      </div>
+
+      <div class="card" style="background:#fff">
+        <div class="small muted">핵심 드라이버(답변 패턴 요약)</div>
+        <div class="taglist">
+          ${topHints.map(h=>`<span class="pill">${h}</span>`).join('') || '<span class="pill">데이터가 더 필요해요</span>'}
+        </div>
+        <div class="small muted" style="margin-top:10px">당신의 태그</div>
+        <div class="taglist">
+          ${topTags.map(tg=>`<span class="pill">${tg}</span>`).join('') || '<span class="pill">—</span>'}
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="background:#fff;margin-top:12px">
+      <div class="small muted">코칭 포인트(훈련 추천)</div>
+      <div class="taglist">${tips}</div>
+    </div>
+
+    <div class="card" style="background:#fff;margin-top:12px">
+      <div class="small muted">공유</div>
+      <div class="sharebox">
+        <input class="link" id="shareLink" readonly value="${shareUrl}" />
+        <button class="ghost" id="copyBtn">링크 복사</button>
+        <button class="primary" id="webshareBtn">공유하기</button>
+        <button class="ghost" id="retryBtn">다시하기</button>
+      </div>
+    </div>
+  `;
+  resultEl.classList.remove('hidden');
+
+  document.getElementById('copyBtn').onclick = async ()=>{
+    try{
+      const linkEl = document.getElementById('shareLink');
+      linkEl.select(); linkEl.setSelectionRange(0, 99999);
+      await navigator.clipboard.writeText(linkEl.value);
+      alert('공유 링크를 복사했어요!');
+    }catch(e){ alert('복사에 실패했어요. 수동으로 복사해주세요.'); }
+  };
+  document.getElementById('webshareBtn').onclick = async ()=>{
+    const text = `내 BJJ 롤 스타일 결과 — 가드:${g}, 탑:${t}, 일관성:${consist}%`;
+    const url = document.getElementById('shareLink').value;
+    if (navigator.share){ try{ await navigator.share({title:'BJJ 롤 스타일', text, url}); }catch(_){}} 
+    else { alert('이 기기에서는 기본 공유가 지원되지 않아요. 링크를 복사해 공유해주세요!'); }
+  };
+  document.getElementById('retryBtn').onclick = ()=>{ location.hash=''; location.reload(); };
+}
+
+/* ========== 네비게이션 ========== */
+prevBtn.addEventListener('click', ()=>{
+  if(currentIndex>0) currentIndex--;
+  renderQuestion(currentIndex);
+});
+nextBtn.addEventListener('click', ()=>{
+  const q = QUESTIONS[currentIndex];
+  if(answers[q.id]===undefined){ alert('선택해주세요.'); return; }
+  if(currentIndex<QUESTIONS.length-1) currentIndex++;
+  renderQuestion(currentIndex);
+});
+document.querySelector('form').addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const q = QUESTIONS[currentIndex];
+  if(answers[q.id]===undefined){ alert('선택해주세요.'); return; }
+  showResult();
+  window.scrollTo({top:0, behavior:'smooth'});
+});
+
+/* ========== 해시 복원(공유 링크) ========== */
+function tryRestoreFromHash(){
+  const m = location.hash.match(/#r=([^&]+)/);
+  if(!m) return false;
+  try{
+    const json = decodeURIComponent(escape(atob(m[1])));
+    const payload = JSON.parse(json);
+    if (!payload || payload.v!==2) return false;
+    // 결과 보기 전용 — 점수만 복원해서 리포트 바로 노출
+    Object.keys(answers).forEach(k=>delete answers[k]);
+    // 미니 렌더(진행바 채우기)
+    currentIndex = QUESTIONS.length-1;
+    renderQuestion(currentIndex);
+    dim.guard = payload.g||0; dim.top = payload.t||0;
+    showResult();
+    return true;
+  }catch(e){ return false; }
+}
+
+/* 초기 렌더 */
+if(!tryRestoreFromHash()){ renderQuestion(0); }
+</script>
+</body>
+</html>
