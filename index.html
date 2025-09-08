@@ -3,16 +3,17 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>BJJ 롤 스타일 테스트 — 탑 vs 가드 (분석 리포트)</title>
-<meta name="description" content="주짓수 롤 스타일 11문항 테스트: 탑 플레이어 vs 가드 플레이어 — 결과를 분석 리포트로 제공합니다." />
+<title>BJJ 롤 스타일 테스트 — 전문가형(28문항)</title>
+<meta name="description" content="주짓수 롤 스타일 28문항: 7가지 카테고리(탑/가드/올라운더/레슬러/레그락/서브헌터/카운터) 분석 리포트" />
 <style>
   :root{
     --fg:#0f172a; --muted:#64748b; --bg:#ffffff; --card:#f8fafc;
-    --accent:#2563eb; --accent2:#14b8a6; --warn:#f59e0b; --border:#e2e8f0;
+    --accent:#2563eb; --accent2:#14b8a6; --border:#e2e8f0;
+    --ok:#60a5fa; --good:#22c55e; --warn:#f59e0b;
   }
   *{box-sizing:border-box}
   body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,'Apple SD Gothic Neo','Noto Sans KR',Arial,sans-serif;color:var(--fg);background:linear-gradient(180deg,#fff,#f6f9ff 45%,#eef3ff)}
-  .wrap{max-width:920px;margin:0 auto;padding:24px}
+  .wrap{max-width:1024px;margin:0 auto;padding:24px}
   header{margin:4px 0 16px}
   h1{font-size:28px;margin:0 0 6px}
   p.lead{color:var(--muted);margin:0}
@@ -32,7 +33,7 @@
   .small{font-size:13px}
   .result h2{margin:8px 0 6px}
   .grid{display:grid;grid-template-columns:1fr;gap:12px}
-  @media(min-width:860px){.grid{grid-template-columns:1.1fr 0.9fr}}
+  @media(min-width:960px){.grid{grid-template-columns:1.1fr 0.9fr}}
   .pill{display:inline-block;padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:#fff;margin:4px 6px 0 0;font-size:12px}
   .footer{margin:20px 0;color:var(--muted);font-size:12px}
   .hidden{display:none}
@@ -41,276 +42,467 @@
   .kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .kbar{background:#fff;border:1px solid var(--border);border-radius:12px;padding:10px}
   .klabel{font-size:12px;color:var(--muted);margin-bottom:6px}
-  .kfill{height:10px;background:linear-gradient(90deg,var(--accent),#60a5fa);border-radius:999px;width:0}
-  .kfill2{height:10px;background:linear-gradient(90deg,#22c55e,#a3e635);border-radius:999px;width:0}
-  .taglist{margin-top:6px}
+  .kfill{height:10px;background:linear-gradient(90deg,var(--ok),#a5b4fc);border-radius:999px;width:0}
+  .kfill2{height:10px;background:linear-gradient(90deg,var(--good),#a3e635);border-radius:999px;width:0}
   .callout{background:#fff;border:1px dashed var(--border);padding:10px;border-radius:12px}
-  .warn{color:#b45309}
+  .taglist{margin-top:6px}
+  .hbar{background:#fff;border:1px solid var(--border);border-radius:10px;padding:8px;margin:6px 0}
+  .hbar-fill{height:8px;border-radius:999px;background:linear-gradient(90deg,#60a5fa,#22d3ee);width:0;margin-top:6px}
+  .cat-badge{display:inline-block;font-size:12px;padding:6px 10px;border-radius:999px;background:#fff;border:1px solid var(--border);margin-left:8px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1>BJJ 롤 스타일 테스트 🧭</h1>
-    <p class="lead">11문항으로 **탑 vs 가드** 성향을 측정하고, 결과를 **분석 리포트**로 보여드립니다.</p>
+    <p class="lead">28문항으로 <strong>탑/가드/레슬링/압박/플로우/서브/카운터/레그락</strong>을 계량화하고, <strong>7가지 카테고리</strong>로 분류합니다.</p>
   </header>
 
   <div class="progress" aria-hidden="true"><div class="bar" id="bar"></div></div>
-  <div class="small muted" id="count">0 / 11</div>
+  <div class="small muted" id="count">0 / 28</div>
 
   <form id="quiz" class="card"></form>
 
   <div class="actions">
     <button type="button" class="ghost" id="prevBtn">이전</button>
     <button type="button" class="primary" id="nextBtn">다음</button>
-    <button type="submit" class="success hidden" id="submitBtn">결과 보기</button>
+    <button type="button" class="success hidden" id="submitBtn">결과 보기</button>
   </div>
 
   <section id="result" class="card result hidden"></section>
 
-  <div class="footer">ⓒ 2025 MK Corporation • 취미용 테스트이며 실제 훈련은 코치와 상의하세요.</div>
+  <div class="footer">© 2025 MK corporation • 취미용 테스트이며 실제 훈련은 코치와 상의하세요.</div>
 </div>
 
 <script>
-/* =========================
-   분류: 탑 / 가드 / (유머) 애매
-   - 초기 화면에는 '애매' 언급 없음
-   - 결과가 애매하면 유머러스하게 표현
-   - 분석 리포트: 점수, 일관성, 핵심 드라이버, 보완 포인트
-========================= */
-const CATS = {
-  TOP:   { key:"TOP",   name:"탑 플레이어",   desc:"패싱과 포지션 컨트롤로 상위에서 압박합니다." },
-  GUARD: { key:"GUARD", name:"가드 플레이어", desc:"하위 포지션에서 각종 가드로 주도권을 잡습니다." },
-  NONE:  { key:"NONE",  name:"판단 보류(!)",  desc:"오늘은 우주가 당신의 성향을 숨겼어요 😅 다음 롤에서 힌트를 더 주세요!" }
+/* ========= 축/카테고리 ========= */
+const AXES = ["TOP","GUARD","WRESTLE","PRESSURE","FLOW","SUB","COUNTER","LEG"];
+const AXIS_LABEL = {
+  TOP:"탑(패싱/컨트롤)", GUARD:"가드/리텐션", WRESTLE:"업/다운", PRESSURE:"압박",
+  FLOW:"전환/템포", SUB:"서브 체인", COUNTER:"카운터/트랩", LEG:"레그락 시스템"
 };
 
-// 11문항 — guard/top 축 점수와 분석 힌트/태그를 함께 수집
-const QUESTIONS = [
-  { id:"pref", title:"1) 롤 시작 기본 선호는?", options:[
-    {label:"시팅 가드/가드풀", map:{guard:2, top:0}, hint:"가드풀 선호", tags:["시팅가드","가드풀"]},
-    {label:"테이크다운으로 탑", map:{guard:0, top:2}, hint:"업/다운 자신감", tags:["테이크다운","탑선점"]},
-    {label:"상대 따라 유연", map:{guard:1, top:1}, hint:"전술 유연성", tags:["전술유연","상대대응"]} ]},
-  { id:"passing", title:"2) 패스 vs 스윕 성공률?", options:[
-    {label:"스윕/서브가 더 잘됨", map:{guard:2, top:0}, hint:"스윕 위협", tags:["스윕체인","바텀서브"]},
-    {label:"패싱/컨트롤이 강함", map:{guard:0, top:2}, hint:"패싱 압박", tags:["니컷/롱스텝","사이드컨트롤"]},
-    {label:"비슷하다", map:{guard:1, top:1}, hint:"균형형", tags:["밸런스"]} ]},
-  { id:"guards", title:"3) 즐겨 쓰는 가드 타입?", options:[
-    {label:"버터플라이/데라/라쏘", map:{guard:2, top:0}, hint:"모빌 가드", tags:["버터플라이","데라히바"]},
-    {label:"클로즈드/하프→스윕", map:{guard:2, top:0}, hint:"전통 가드", tags:["클로즈드","하프"]},
-    {label:"가드보단 패싱", map:{guard:0, top:2}, hint:"패스 지향", tags:["패스체인","베이스"]} ]},
-  { id:"wrestle", title:"4) 레슬링/업다운 자신감?", options:[
-    {label:"낮음(가드풀 편함)", map:{guard:2, top:0}, hint:"업다운 보완", tags:["업다운보완"]},
-    {label:"높음(탑 가져감)", map:{guard:0, top:2}, hint:"업다운 강점", tags:["업다운강점"]},
-    {label:"보통", map:{guard:1, top:1}, hint:"평균", tags:["평균"]} ]},
-  { id:"pace", title:"5) 템포/운영 스타일?", options:[
-    {label:"리액티브(카운터/세팅)", map:{guard:2, top:1}, hint:"리액티브 운영", tags:["카운터","세팅"]},
-    {label:"프로액티브(압박/패싱)", map:{guard:0, top:2}, hint:"프로액티브 압박", tags:["압박","라인브레이크"]},
-    {label:"상황 스위치", map:{guard:1, top:1}, hint:"전환형", tags:["전환"]} ]},
-  { id:"subs", title:"6) 제출기 경향?", options:[
-    {label:"삼각/암바 등 바텀 서브", map:{guard:2, top:0}, hint:"바텀 서브 체인", tags:["삼각","암바"]},
-    {label:"초크/아메리카나 등 탑 서브", map:{guard:0, top:2}, hint:"탑 서브 체인", tags:["초크","아메리카나"]},
-    {label:"둘 다 나온다", map:{guard:1, top:1}, hint:"이중 위협", tags:["이중위협"]} ]},
-  { id:"passes", title:"7) 주력 패스/브레이크다운?", options:[
-    {label:"가드 전개/언밸런싱", map:{guard:2, top:0}, hint:"언밸런싱", tags:["언밸런싱","엔트리"]},
-    {label:"니컷/롱스텝/토리안도", map:{guard:0, top:2}, hint:"패스 체인", tags:["니컷","롱스텝","토리안도"]},
-    {label:"상황 따라 섞음", map:{guard:1, top:1}, hint:"믹스 전략", tags:["믹스"]} ]},
-  { id:"pressure", title:"8) 압박/무게중심 컨트롤?", options:[
-    {label:"중간 이하", map:{guard:1, top:0}, hint:"압박 과제", tags:["압박보완"]},
-    {label:"강하다", map:{guard:0, top:2}, hint:"압박 강점", tags:["헤비프레셔"]},
-    {label:"보통", map:{guard:1, top:1}, hint:"평균 압박", tags:["평균압박"]} ]},
-  { id:"retention", title:"9) 가드 리텐션 자신감?", options:[
-    {label:"높음", map:{guard:2, top:0}, hint:"리텐션 강점", tags:["리텐션"]},
-    {label:"낮음", map:{guard:0, top:1}, hint:"리텐션 과제", tags:["리텐션보완"]},
-    {label:"보통", map:{guard:1, top:1}, hint:"보통", tags:["보통"]} ]},
-  { id:"coach", title:"10) 코치가 더 강조하는 건?", options:[
-    {label:"가드 디테일", map:{guard:2, top:0}, hint:"가드 디테일", tags:["그립/각도"]},
-    {label:"패스 디테일", map:{guard:0, top:2}, hint:"패스 디테일", tags:["헤드포지션","베이스"]},
-    {label:"전환/타이밍", map:{guard:1, top:1}, hint:"전환 디테일", tags:["타이밍"]} ]},
-  { id:"mind", title:"11) 어디서 더 자신감?", options:[
-    {label:"바텀", map:{guard:2, top:0}, hint:"바텀 자신감", tags:["바텀세이프"]},
-    {label:"탑", map:{guard:0, top:2}, hint:"탑 자신감", tags:["탑세이프"]},
-    {label:"둘 다", map:{guard:1, top:1}, hint:"양면 자신감", tags:["양면세이프"]} ]}
+const CATS = {
+  TOP_SPECIALIST:  {key:"TOP_SPECIALIST",  name:"탑 스페셜리스트",  desc:"패싱 연계와 압박으로 상위를 장악합니다."},
+  GUARD_SPECIALIST:{key:"GUARD_SPECIALIST",name:"가드 스페셜리스트",desc:"리텐션/스윕/바텀 서브로 주도권을 잡습니다."},
+  ALL_ROUNDER:     {key:"ALL_ROUNDER",     name:"올라운더",        desc:"탑·가드 균형에 전환/의사결정이 강점입니다."},
+  WRESTLER_FIRST:  {key:"WRESTLER_FIRST",  name:"레슬러-퍼스트 탑퍼",desc:"스탠딩→테이크다운→탑 유지 루트가 강력합니다."},
+  LEGLOCK_SYSTEM:  {key:"LEGLOCK_SYSTEM",  name:"레그락 시스템",   desc:"아시/외애시 전환과 하체 피니시 위협이 특징입니다."},
+  SUBMISSION_HUNTER:{key:"SUBMISSION_HUNTER",name:"서브미션 헌터", desc:"포지션보다 피니시를 먼저 세팅하는 성향입니다."},
+  COUNTER_TEMPO:   {key:"COUNTER_TEMPO",   name:"카운터-템포",     desc:"리액티브 트랩과 템포 조절로 실수를 유도합니다."},
+  UNDETERMINED:    {key:"UNDETERMINED",    name:"판단 보류 😅",     desc:"오늘은 다재다능으로 포장해도 괜찮아요!"}
+};
+
+/* ========= 문항(28) =========
+   각 옵션은 8축 중 1~2개에 가중치(+ tags/hints)
+   가중치 합이 축의 '점수'가 됩니다.
+*/
+const Q = [
+  {id:"start", title:"1) 오픈 매트 첫 전개는?", opts:[
+    {t:"시팅/가드풀로 각도부터", map:{GUARD:2,FLOW:1}, tags:["시팅","가드풀","세팅"]},
+    {t:"그립파이트→TD로 탑 선점", map:{WRESTLE:2,TOP:1}, tags:["테이크다운","탑선점"]},
+    {t:"상대 보고 분기", map:{FLOW:2}, tags:["전환","타이밍"]}
+  ]},
+  {id:"tempo", title:"2) 템포 운영?", opts:[
+    {t:"리액티브(받아치기/세팅)", map:{COUNTER:2,GUARD:1}, tags:["카운터","세팅"]},
+    {t:"프로액티브(라인 깨며 압박)", map:{PRESSURE:2,TOP:1}, tags:["압박","라인브레이크"]},
+    {t:"상황 스위치", map:{FLOW:2}, tags:["전환"]}
+  ]},
+  {id:"guardtype", title:"3) 즐겨 쓰는 가드 타입?", opts:[
+    {t:"버터플라이/데라/라쏘", map:{GUARD:2,FLOW:1}, tags:["버터플라이","데라","라쏘"]},
+    {t:"클로즈드/하프에서 셋업", map:{GUARD:2,SUB:1}, tags:["클로즈드","하프"]},
+    {t:"가드보다 패싱", map:{TOP:2,PRESSURE:1}, tags:["니컷","롱스텝","토리안도"]}
+  ]},
+  {id:"passing", title:"4) 패스 루트 선호", opts:[
+    {t:"패스보다 스윕/서브 기회", map:{GUARD:2,SUB:1}, tags:["언밸런싱","이중위협"]},
+    {t:"니컷/롱스텝/토리안도 체인", map:{TOP:2,PRESSURE:1}, tags:["니컷","롱스텝","토리안도"]},
+    {t:"상황별 믹스", map:{FLOW:2}, tags:["전환"]}
+  ]},
+  {id:"retention", title:"5) 리텐션 자신감", opts:[
+    {t:"높음(힙/그란비로 복귀)", map:{GUARD:2,FLOW:1}, tags:["리텐션","그란비"]},
+    {t:"낮음(패스 쉽게 열림)", map:{TOP:1}, tags:["리텐션보완"]},
+    {t:"보통", map:{GUARD:1}, tags:["보통"]}
+  ]},
+  {id:"pressure", title:"6) 압박/무게중심", opts:[
+    {t:"중간 이하", map:{GUARD:1}, tags:["압박보완"]},
+    {t:"강함(사이드/마운트 유지 쉬움)", map:{PRESSURE:2,TOP:1}, tags:["헤비프레셔","베이스"]},
+    {t:"보통", map:{PRESSURE:1}, tags:["보통"]}
+  ]},
+  {id:"wrestle", title:"7) 업/다운(레슬링)", opts:[
+    {t:"낮음(가드풀 편함)", map:{GUARD:2}, tags:["업다운보완"]},
+    {t:"높음(TD→탑 유지 자신)", map:{WRESTLE:2,TOP:1}, tags:["업다운강점","테이크다운"]},
+    {t:"보통", map:{WRESTLE:1}, tags:["보통"]}
+  ]},
+  {id:"grips", title:"8) 그립/프레임 디테일", opts:[
+    {t:"그립·프레임 자신 있음", map:{GUARD:2,COUNTER:1}, tags:["그립","프레임"]},
+    {t:"헤드포지션/언더훅/베이스", map:{PRESSURE:2,TOP:1}, tags:["헤드포지션","언더훅","베이스"]},
+    {t:"둘 다 상황별", map:{FLOW:2}, tags:["전환"]}
+  ]},
+  {id:"subsB", title:"9) 바텀 서브", opts:[
+    {t:"삼각/암바/옴플 자주", map:{SUB:2,GUARD:1}, tags:["삼각","암바"]},
+    {t:"거의 안 노림", map:{TOP:1}, tags:[]},
+    {t:"상황 따라", map:{SUB:1}, tags:["이중위협"]}
+  ]},
+  {id:"subsT", title:"10) 탑 서브", opts:[
+    {t:"초크/아메리카나/암트라", map:{SUB:2,TOP:1}, tags:["초크","아메리카나"]},
+    {t:"컨트롤 위주(서브는 보너스)", map:{TOP:2}, tags:["베이스"]},
+    {t:"둘 다 노림", map:{SUB:1,TOP:1}, tags:["이중위협"]}
+  ]},
+  {id:"inv", title:"11) 인버전 활용", opts:[
+    {t:"자주(엔트리/리텐션)", map:{GUARD:2,FLOW:1}, tags:["인버전"]},
+    {t:"가끔", map:{GUARD:1}, tags:["인버전"]},
+    {t:"거의 안 함(패스/압박 지향)", map:{TOP:2,PRESSURE:1}, tags:["압박"]}
+  ]},
+  {id:"gameplan", title:"12) 게임플랜 철학", opts:[
+    {t:"대응형(반응 유도)", map:{COUNTER:2,GUARD:1}, tags:["카운터","세팅"]},
+    {t:"주도형(라인 깨고 압박)", map:{PRESSURE:2,TOP:1}, tags:["압박"]},
+    {t:"상황형(득점 우선순위 유동)", map:{FLOW:2}, tags:["전환"]}
+  ]},
+  {id:"scramble", title:"13) 스크램블 선호", opts:[
+    {t:"리스크 적게, 각도 만들기", map:{COUNTER:1,GUARD:1}, tags:["세팅"]},
+    {t:"강하게 밀어붙여 상위 확보", map:{TOP:2,WRESTLE:1}, tags:["베이스","압박"]},
+    {t:"케이스 바이 케이스", map:{FLOW:2}, tags:["전환"]}
+  ]},
+  {id:"stand", title:"14) 스탠딩 루틴", opts:[
+    {t:"풀/시팅으로 전개", map:{GUARD:2}, tags:["시팅","가드풀"]},
+    {t:"그립파이트→레벨체인지→TD", map:{WRESTLE:2,TOP:1}, tags:["테이크다운","헤드포지션"]},
+    {t:"상대 따라 분기", map:{FLOW:2}, tags:["전환"]}
+  ]},
+  {id:"passDetail", title:"15) 패스 디테일", opts:[
+    {t:"각도/무릎쉴드 해체 자신", map:{TOP:2,PRESSURE:1}, tags:["니컷","헤드포지션"]},
+    {t:"보통", map:{TOP:1}, tags:["베이스"]},
+    {t:"낮음", map:{GUARD:1}, tags:["패스보완"]}
+  ]},
+  {id:"retDetail", title:"16) 리텐션/프레임 디테일", opts:[
+    {t:"각도·프레임 전환 디테일 좋음", map:{GUARD:2,COUNTER:1}, tags:["리텐션","프레임"]},
+    {t:"보통", map:{GUARD:1}, tags:["프레임"]},
+    {t:"낮음", map:{TOP:1}, tags:["리텐션보완"]}
+  ]},
+  {id:"finishPref", title:"17) 득점 우선순위", opts:[
+    {t:"스윕/서브 먼저", map:{SUB:2,GUARD:1}, tags:["이중위협"]},
+    {t:"패스/컨트롤 먼저", map:{TOP:2,PRESSURE:1}, tags:["베이스","압박"]},
+    {t:"상황 따라", map:{FLOW:2}, tags:["전환"]}
+  ]},
+  {id:"mind", title:"18) 심리적 안전지대", opts:[
+    {t:"바텀에서 조립할 때", map:{GUARD:2}, tags:["바텀세이프"]},
+    {t:"탑에서 누르고 깰 때", map:{TOP:2,PRESSURE:1}, tags:["탑세이프"]},
+    {t:"둘 다 괜찮음", map:{FLOW:2}, tags:["양면세이프"]}
+  ]},
+  {id:"meta", title:"19) 노기 메타 적응", opts:[
+    {t:"노기에서도 가드·엔트리 잘됨", map:{GUARD:2,COUNTER:1}, tags:["버터플라이"]},
+    {t:"노기에선 패싱/압박이 더 잘됨", map:{TOP:2,PRESSURE:1}, tags:["압박"]},
+    {t:"둘 다 비슷", map:{FLOW:2}, tags:["전환"]}
+  ]},
+  {id:"counter", title:"20) 카운터 무기", opts:[
+    {t:"길로틴/백테이크 트랩 보유", map:{COUNTER:2,SUB:1}, tags:["길로틴","백테이크"]},
+    {t:"패스 카운터(리그립/베이스)", map:{TOP:2,COUNTER:1}, tags:["리그립","베이스"]},
+    {t:"특별한 트랩 없음", map:{FLOW:1}, tags:[]}
+  ]},
+  {id:"legEntry", title:"21) 레그 엔트리 빈도", opts:[
+    {t:"자주(아시/외애시 전환)", map:{LEG:2,COUNTER:1}, tags:["아시","외애시"]},
+    {t:"가끔", map:{LEG:1}, tags:["레그"]},
+    {t:"거의 안 씀", map:{TOP:1}, tags:[]}
+  ]},
+  {id:"legFinish", title:"22) 레그 피니시 디테일", opts:[
+    {t:"힐훅/니바 등 마무리 자신", map:{LEG:2,SUB:1}, tags:["힐훅","니바"]},
+    {t:"도중 이탈/스탠업 전환", map:{FLOW:1,COUNTER:1}, tags:["전환"]},
+    {t:"시도 드묾", map:{TOP:1}, tags:[]}
+  ]},
+  {id:"transition", title:"23) 포지션 전환 속도", opts:[
+    {t:"빠름(체인 연결 매끄럽다)", map:{FLOW:2}, tags:["연결"]},
+    {t:"보통", map:{FLOW:1}, tags:["보통"]},
+    {t:"느린 편(고정 지향)", map:{PRESSURE:1,TOP:1}, tags:["고정"]}
+  ]},
+  {id:"controlTime", title:"24) 컨트롤 시간 확보", opts:[
+    {t:"패스 후 3~5초 안정 확보", map:{PRESSURE:2,TOP:1}, tags:["컨트롤시간"]},
+    {t:"안정 전에 전환/서브 시도", map:{FLOW:1,SUB:1}, tags:["전환"]},
+    {t:"매번 다름", map:{FLOW:1}, tags:["변동"]}
+  ]},
+  {id:"study", title:"25) 학습 루틴", opts:[
+    {t:"시스템(연결/의사결정) 위주", map:{FLOW:2,COUNTER:1}, tags:["시스템"]},
+    {t:"패스/압박 드릴 반복", map:{TOP:1,PRESSURE:2}, tags:["드릴"]},
+    {t:"가드 리텐션·엔트리 반복", map:{GUARD:2}, tags:["리텐션루틴"]}
+  ]},
+  {id:"review", title:"26) 최근 롤 피드백", opts:[
+    {t:"가드 전개/리텐션 칭찬 多", map:{GUARD:2}, tags:["리텐션","언밸런싱"]},
+    {t:"패스/컨트롤 칭찬 多", map:{TOP:2,PRESSURE:1}, tags:["니컷","헤드포지션"]},
+    {t:"특징 분산(강점 모호)", map:{FLOW:1}, tags:["분산"]}
+  ]},
+  {id:"risk", title:"27) 리스크 성향", opts:[
+    {t:"낮게(포지션 우선)", map:{PRESSURE:1,TOP:1}, tags:["리스크관리"]},
+    {t:"중간", map:{FLOW:1}, tags:["균형"]},
+    {t:"높게(피니시 시도 많음)", map:{SUB:2,COUNTER:1}, tags:["피니시지향"]}
+  ]},
+  {id:"fatigue", title:"28) 피로 시 선택 경향", opts:[
+    {t:"탑 고정/압박으로 속도 낮춤", map:{PRESSURE:2,TOP:1}, tags:["에너지세이브"]},
+    {t:"가드로 각도/트랩으로 대응", map:{GUARD:2,COUNTER:1}, tags:["트랩"]},
+    {t:"전환으로 흐름 유지", map:{FLOW:2}, tags:["전환"]}
+  ]}
 ];
 
-const quizEl = document.getElementById('quiz');
+/* ========= 상태 ========= */
 const barEl = document.getElementById('bar');
 const countEl = document.getElementById('count');
+const quizEl = document.getElementById('quiz');
 const prevBtn = document.getElementById('prevBtn');
 const nextBtn = document.getElementById('nextBtn');
 const submitBtn = document.getElementById('submitBtn');
 const resultEl = document.getElementById('result');
 
-let currentIndex = 0;
-const answers = {}; // id -> option index
-const dim = { guard:0, top:0 };
+let idx = 0;
+const answers = {};                  // {id: optionIndex}
+const score = Object.fromEntries(AXES.map(a=>[a,0]));
+const tagCount = new Map();
 
+/* ========= 렌더링 ========= */
 function renderQuestion(i){
+  const q = Q[i];
   quizEl.innerHTML = '';
-  const q = QUESTIONS[i];
   const title = document.createElement('div');
-  title.className='q-title';
+  title.className = 'q-title';
   title.textContent = q.title;
   quizEl.appendChild(title);
 
-  q.options.forEach((opt, idx) => {
+  q.opts.forEach((o, oi)=>{
     const label = document.createElement('label');
     label.className = 'opt';
     const input = document.createElement('input');
-    input.type = 'radio';
-    input.name = q.id;
-    input.value = idx;
-    input.checked = answers[q.id] === idx;
-    input.addEventListener('change', ()=> { answers[q.id] = idx; updateNav(); });
-    const span = document.createElement('span');
-    span.textContent = opt.label;
-    label.appendChild(input);
-    label.appendChild(span);
+    input.type = 'radio'; input.name = q.id; input.value = oi;
+    input.checked = answers[q.id] === oi;
+    input.addEventListener('change', ()=>{
+      answers[q.id] = oi;
+      updateNav(); updateProgress();
+    });
+    const span = document.createElement('span'); span.textContent = o.t;
+    label.appendChild(input); label.appendChild(span);
     quizEl.appendChild(label);
   });
 
-  updateProgress();
-  updateNav();
+  updateNav(); updateProgress();
 }
-
 function updateProgress(){
   const answered = Object.keys(answers).length;
-  const pct = Math.round((answered/QUESTIONS.length)*100);
-  barEl.style.width = pct + '%';
-  countEl.textContent = `${Math.min(currentIndex+1, QUESTIONS.length)} / ${QUESTIONS.length}`;
+  const pct = Math.round((answered/Q.length)*100);
+  barEl.style.width = pct+'%';
+  countEl.textContent = `${Math.min(idx+1, Q.length)} / ${Q.length}`;
 }
-
 function updateNav(){
-  prevBtn.disabled = currentIndex===0;
-  const q = QUESTIONS[currentIndex];
-  const hasAnswer = answers[q.id] !== undefined;
-  nextBtn.classList.toggle('hidden', currentIndex >= QUESTIONS.length-1);
-  submitBtn.classList.toggle('hidden', currentIndex < QUESTIONS.length-1);
-  nextBtn.disabled = !hasAnswer;
-  submitBtn.disabled = !hasAnswer;
+  prevBtn.disabled = idx===0;
+  const q = Q[idx];
+  const has = answers[q.id] !== undefined;
+  nextBtn.classList.toggle('hidden', idx >= Q.length-1);
+  submitBtn.classList.toggle('hidden', idx < Q.length-1);
+  nextBtn.disabled = !has;
+  submitBtn.disabled = (idx >= Q.length-1) ? !has : true;
 }
 
-/* ======= 분석 로직 ======= */
-function computeDims(){
-  dim.guard = 0; dim.top = 0;
-  Object.entries(answers).forEach(([qid, idx])=>{
-    const opt = QUESTIONS.find(q=>q.id===qid).options[idx];
-    dim.guard += opt.map.guard; dim.top += opt.map.top;
-  });
-  return dim;
-}
+/* ========= 점수 집계 ========= */
+function computeScores(){
+  // reset
+  AXES.forEach(a=>score[a]=0);
+  tagCount.clear();
 
-// 임계값: 총점 낮거나, 격차가 작은 경우 → NONE(유머)
-function classify(g, t){
-  const total = g + t;
-  const diff  = Math.abs(g - t);
-  if (total <= 8) return CATS.NONE;      // 데이터 부족/일관성 낮음
-  if (diff <= 2)  return CATS.NONE;      // 거의 비등비등
-  return (g > t) ? CATS.GUARD : CATS.TOP;
-}
-
-function collectDrivers(){
-  const hints = new Map();   // hint -> count
-  const tags  = new Map();   // tag  -> count
-  Object.entries(answers).forEach(([qid, idx])=>{
-    const opt = QUESTIONS.find(q=>q.id===qid).options[idx];
-    if (opt.hint) hints.set(opt.hint, (hints.get(opt.hint)||0)+1);
-    (opt.tags||[]).forEach(t=> tags.set(t, (tags.get(t)||0)+1));
-  });
-  // 상위 5개만 추려서 반환
-  const topHints = [...hints.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5).map(([k])=>k);
-  const topTags  = [...tags.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k])=>k);
-  return { topHints, topTags };
-}
-
-function coachTipsFor(cat){
-  if (cat.key === "TOP") return [
-    "니컷·롱스텝·토리안도 3체인 속도 유지",
-    "헤드포지션/언더훅 우선 — 베이스 깨지지 않기",
-    "패스→사이드→마운트 3초 규칙(컨트롤 시간 확보)",
-    "탑 서브(초크/암트라) 피니시 루틴 정형화"
-  ];
-  if (cat.key === "GUARD") return [
-    "리텐션 루틴(그란비/힙스케이프) 5분 드릴",
-    "언밸런싱→스윕 2-3단 연결(버터플라이/사이즈업)",
-    "가드에서 이중 위협(스윕+서브) 각도 만들기",
-    "그립 파이팅/프레임 디테일(손 위치, 각도, 타이밍)"
-  ];
-  // NONE (유머 + 개선 포인트 가볍게)
-  return [
-    "오늘 컨디션: '랜덤 셀렉트' 🎲 — 다음 롤에서 단 하나의 목표만!",
-    "가드 1종·패스 1종을 '고정픽'으로 선택해 성공률 체크",
-    "업/다운 기본기(스탠스·레벨체인지) 10분 루틴",
-    "자주 막히는 상황 하나만 메모하고 바로 복기"
-  ];
-}
-
-function showResult(){
-  computeDims();
-  const g = dim.guard, t = dim.top;
-  const cat = classify(g, t);
-  const total = g + t;
-  const diff  = Math.abs(g - t);
-  const guardPct = Math.round((g/22)*100);
-  const topPct   = Math.round((t/22)*100);
-  const consist  = (total>0) ? Math.round((diff/total)*100) : 0; // 일관성 지수(%)
-
-  const { topHints, topTags } = collectDrivers();
-  const tips = coachTipsFor(cat).map(t=>`<span class="pill">${t}</span>`).join('');
-
-  // 결과 헤더 문구(유머 포함)
-  let headline = `결과: ${cat.name}`;
-  let subline  = cat.desc;
-  if (cat.key === "NONE") {
-    headline = "결과: 판단 보류 😅";
-    subline  = "가드/탑 지표가 비슷하거나 데이터가 부족해요. 오늘은 '다재다능'으로 포장해봅시다!";
+  for (const q of Q){
+    const oi = answers[q.id];
+    if (oi===undefined) continue;
+    const opt = q.opts[oi];
+    for (const [axis,w] of Object.entries(opt.map)) score[axis]+=w;
+    (opt.tags||[]).forEach(t=> tagCount.set(t, (tagCount.get(t)||0)+1));
   }
+  return score;
+}
 
-  // 공유 링크 (점수 포함)
-  const payload = { g, t, v:2, cat:cat.key };
+/* ========= 카테고리 스코어(가중 합) & 판정 ========= */
+const MAX_PER_AXIS =  (/* avg weights */ 3) * Q.length / 4 * 2; // rough display cap
+const TH = { // 상대적 임계
+  HIGH:  (sum)=> percentile(sum, 0.75),
+  MID:   (sum)=> percentile(sum, 0.6),
+  DELTA: 4,  // TOP-GUARD 분리
+  EPS:   3,  // 균형 허용
+  MINTOTAL: 20,
+  ENTROPY: 0.12
+};
+
+function percentile(s, p){
+  // 간단: 전체축 평균을 기준으로 스케일링 (정교 통계 아님)
+  const vals = AXES.map(a=>s[a]);
+  const sorted = [...vals].sort((a,b)=>a-b);
+  const i = Math.floor(p*(sorted.length-1));
+  return sorted[i];
+}
+function entropyLike(s){
+  const sum = AXES.reduce((a,k)=>a+s[k],0) || 1;
+  const probs = AXES.map(k=>s[k]/sum);
+  const mean = probs.reduce((a,b)=>a+b,0)/probs.length;
+  const varc = probs.reduce((a,p)=>a+(p-mean)**2,0)/probs.length;
+  return varc; // 분산 작으면 고르게 분포(=애매)
+}
+function ruleClassify(s){
+  const diffTG = Math.abs(s.TOP - s.GUARD);
+  const total  = AXES.reduce((a,k)=>a+s[k],0);
+  const high = (a)=> s[a] >= TH.HIGH(s);
+  const mid  = (a)=> s[a] >= TH.MID(s);
+
+  const cands = [];
+  if (high("TOP") && high("PRESSURE") && (s.TOP - s.GUARD) >= TH.DELTA) cands.push(CATS.TOP_SPECIALIST);
+  if (high("GUARD") && (s.GUARD - s.TOP) >= TH.DELTA && ( (tagCount.get("리텐션")||0) + (tagCount.get("그란비")||0) >= 2)) cands.push(CATS.GUARD_SPECIALIST);
+  if (high("TOP") && high("GUARD") && diffTG <= TH.EPS && mid("FLOW")) cands.push(CATS.ALL_ROUNDER);
+  if (high("WRESTLE") && mid("TOP")) cands.push(CATS.WRESTLER_FIRST);
+  if (high("LEG") && (mid("COUNTER") || mid("FLOW"))) cands.push(CATS.LEGLOCK_SYSTEM);
+  if (high("SUB") && (mid("FLOW") || mid("TOP") || mid("GUARD"))) cands.push(CATS.SUBMISSION_HUNTER);
+  if (high("COUNTER") && mid("FLOW") && s.WRESTLE < TH.HIGH(s)) cands.push(CATS.COUNTER_TEMPO);
+
+  const entropy = entropyLike(s);
+  if (cands.length===0 && (total < TH.MINTOTAL || entropy < TH.ENTROPY)) return CATS.UNDETERMINED;
+
+  // 후보 다수면 스코어 기반 타이브레이크
+  if (cands.length>0){
+    const catScore = categoryWeightedScores(s);
+    cands.sort((a,b)=> (catScore[b.key]||0) - (catScore[a.key]||0));
+    return cands[0];
+  }
+  return CATS.UNDETERMINED;
+}
+function categoryWeightedScores(s){
+  // 카테고리별 축 가중 합(대략적)
+  const W = {
+    TOP_SPECIALIST:  {TOP:3,PRESSURE:2,WRESTLE:1,FLOW:1},
+    GUARD_SPECIALIST:{GUARD:3,SUB:1,FLOW:1,COUNTER:1},
+    ALL_ROUNDER:     {TOP:2,GUARD:2,FLOW:2},
+    WRESTLER_FIRST:  {WRESTLE:3,TOP:2,PRESSURE:1},
+    LEGLOCK_SYSTEM:  {LEG:3,COUNTER:2,FLOW:1},
+    SUBMISSION_HUNTER:{SUB:3,FLOW:1,TOP:1,GUARD:1},
+    COUNTER_TEMPO:   {COUNTER:3,FLOW:2,GUARD:1}
+  };
+  const out = {};
+  for (const [cat,weights] of Object.entries(W)){
+    let v=0; for (const [axis,w] of Object.entries(weights)) v += (s[axis]||0)*w;
+    out[cat]=v;
+  }
+  return out;
+}
+function pickSecondary(main, s){
+  const all = categoryWeightedScores(s);
+  delete all[main.key];
+  // 보조는 UNDETERMINED 제외, 점수 2위
+  delete all["UNDETERMINED"];
+  const arr = Object.entries(all).sort((a,b)=>b[1]-a[1]);
+  if (!arr.length) return null;
+  const key = arr[0][0];
+  // 간단 보호: 2위 점수가 너무 낮으면 표시 생략
+  return CATS[key] || null;
+}
+
+/* ========= 시각화 ========= */
+function hbar(name, value, max){
+  const pct = Math.round(max ? (value/max)*100 : 0);
+  return `
+    <div class="hbar">
+      <div class="small muted">${name} <span style="float:right">${value}</span></div>
+      <div class="hbar-fill" style="width:${pct}%"></div>
+    </div>`;
+}
+
+/* ========= 결과 ========= */
+function showResult(){
+  // 체크 누락 방지
+  const left = Q.filter(q=>answers[q.id]===undefined).length;
+  if (left>0){ alert(`아직 ${left}개 항목이 남았습니다.`); return; }
+
+  computeScores();
+  const totalPerAxisMax = 3 * Q.length; // 시각화 캡(대략 넉넉히)
+  const guardPct = Math.round(100*score.GUARD/totalPerAxisMax);
+  const topPct   = Math.round(100*score.TOP/totalPerAxisMax);
+
+  const main = ruleClassify(score);
+  const sub  = pickSecondary(main, score);
+
+  // 일관성 지수: 상위축 평균 대비 하위축 평균 간격(간단형)
+  const vals = AXES.map(a=>score[a]);
+  const sorted = [...vals].sort((a,b)=>b-a);
+  const hi = (sorted[0]+sorted[1])/2, lo = (sorted[sorted.length-1]+sorted[sorted.length-2])/2;
+  const consist = Math.max(0, Math.round((hi - lo) / (hi||1) * 100));
+
+  // 상위 태그/드라이버
+  const topTags = [...tagCount.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10).map(([k])=>k);
+  const topDrivers = Object.entries(score).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([k])=>AXIS_LABEL[k]);
+
+  // 축 막대(상위 8 모두)
+  const axisBars = AXES.map(a=>hbar(AXIS_LABEL[a], score[a], totalPerAxisMax)).join('');
+
+  // 코칭 팁
+  const tips = (()=>{
+    switch(main.key){
+      case "TOP_SPECIALIST": return ["니컷·롱스텝·토리안도 속도 유지","헤드포지션/언더훅으로 라인브레이크","패스→사이드→마운트 컨트롤 시간 확보","탑 서브(초크/암트라) 루틴 정형화"];
+      case "GUARD_SPECIALIST": return ["리텐션 루틴(그란비/힙스케이프) 5분","언밸런싱→스윕 2-3단 연결","가드에서 이중 위협(스윕+서브) 각도 만들기","그립/프레임 디테일 강화"];
+      case "ALL_ROUNDER": return ["상황 전환 의사결정 체크리스트","득점 우선순위(패스/백/서브) 분기 규칙","상대 스타일별 첫 30초 루틴","카운터 대비 리스크 관리"];
+      case "WRESTLER_FIRST": return ["스탠딩 그립파이트→레벨체인지 루틴","TD 후 탑 유지 5초 규칙","패스 체인 2개를 고정화","가드 풀 대비 카운터 준비"];
+      case "LEGLOCK_SYSTEM": return ["아시→외애시 전환 시간 단축","힐훅 피니시 세부 각도/그립","레그에서 상체 전환-백 연결","레그 디펜스 리스크 관리"];
+      case "SUBMISSION_HUNTER": return ["서브 엔트리 전개 스크립트화","서브 실패→전환 리커버리 규칙","양면 위협(서브+스윕/패스) 유지","그립/각도 먼저 세팅"];
+      case "COUNTER_TEMPO": return ["길로틴/백 트랩 진입 타이밍","상대 리액션 유도 페인트","템포 변속(업/다운) 훈련","리스크 낮은 카운터 루트 확장"];
+      default: return ["오늘의 플레이리스트: '랜덤 셀렉트' 🎲","가드 1종·패스 1종 고정픽 → 성공률 기록","업/다운 기본 루틴 10분","막힌 상황 1개만 메모하고 복기"];
+    }
+  })();
+
+  // 공유 링크
+  const payload = {v:4, score, main:main.key, sub:sub?.key||null};
   const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
   const shareUrl = `${location.origin}${location.pathname}#r=${encoded}`;
 
+  // 헤드라인
+  let headline = `결과: ${main.name}`;
+  let subline  = main.desc;
+  if (main.key==="UNDETERMINED"){
+    headline = "결과: 판단 보류 😅";
+    subline  = "가중 지표가 고르게 분포했습니다. '다재다능'으로 포장 가능! 다음 롤에서 힌트를 더 주세요.";
+  }
+
   resultEl.innerHTML = `
-    <h2>${headline}</h2>
+    <h2>${headline}${sub ? `<span class="cat-badge">보조: ${sub.name}</span>` : ""}</h2>
     <div class="muted">${subline}</div>
 
     <div class="grid" style="margin-top:10px">
       <div class="card" style="background:#fff">
         <div class="kpis">
           <div class="kbar">
-            <div class="klabel">가드 성향</div>
-            <div class="kfill" id="kg" style="width:${guardPct}%"></div>
-            <div class="small muted" style="margin-top:6px">${g} / 22 (${guardPct}%)</div>
+            <div class="klabel">가드 축</div>
+            <div class="kfill" style="width:${guardPct}%"></div>
+            <div class="small muted" style="margin-top:6px">${score.GUARD} / ${totalPerAxisMax} (${guardPct}%)</div>
           </div>
           <div class="kbar">
-            <div class="klabel">탑 성향</div>
-            <div class="kfill2" id="kt" style="width:${topPct}%"></div>
-            <div class="small muted" style="margin-top:6px">${t} / 22 (${topPct}%)</div>
+            <div class="klabel">탑 축</div>
+            <div class="kfill2" style="width:${topPct}%"></div>
+            <div class="small muted" style="margin-top:6px">${score.TOP} / ${totalPerAxisMax} (${topPct}%)</div>
           </div>
         </div>
 
         <div class="callout" style="margin-top:12px">
           <div class="small muted">일관성 지수</div>
           <div style="margin-top:4px;font-weight:700">${consist}%</div>
-          <div class="small muted">※ 값이 높을수록 한쪽 성향이 뚜렷합니다.</div>
+          <div class="small muted">※ 상위/하위 축 편차로 계산 — 높을수록 한쪽 성향이 뚜렷합니다.</div>
         </div>
       </div>
 
       <div class="card" style="background:#fff">
-        <div class="small muted">핵심 드라이버(답변 패턴 요약)</div>
+        <div class="small muted">핵심 드라이버(상위 축)</div>
         <div class="taglist">
-          ${topHints.map(h=>`<span class="pill">${h}</span>`).join('') || '<span class="pill">데이터가 더 필요해요</span>'}
+          ${topDrivers.map(h=>`<span class="pill">${h}</span>`).join('') || '<span class="pill">—</span>'}
         </div>
         <div class="small muted" style="margin-top:10px">당신의 태그</div>
         <div class="taglist">
-          ${topTags.map(tg=>`<span class="pill">${tg}</span>`).join('') || '<span class="pill">—</span>'}
+          ${topTags.map(t=>`<span class="pill">${t}</span>`).join('') || '<span class="pill">—</span>'}
         </div>
       </div>
     </div>
 
     <div class="card" style="background:#fff;margin-top:12px">
-      <div class="small muted">코칭 포인트(훈련 추천)</div>
-      <div class="taglist">${tips}</div>
+      <div class="small muted">8축 세부 지표</div>
+      ${axisBars}
+    </div>
+
+    <div class="card" style="background:#fff;margin-top:12px">
+      <div class="small muted">코칭 포인트</div>
+      <div class="taglist">${tips.map(x=>`<span class="pill">${x}</span>`).join('')}</div>
     </div>
 
     <div class="card" style="background:#fff;margin-top:12px">
@@ -334,7 +526,7 @@ function showResult(){
     }catch(e){ alert('복사에 실패했어요. 수동으로 복사해주세요.'); }
   };
   document.getElementById('webshareBtn').onclick = async ()=>{
-    const text = `내 BJJ 롤 스타일 결과 — 가드:${g}, 탑:${t}, 일관성:${consist}%`;
+    const text = `내 BJJ 결과 — 메인: ${main.name}${sub?`, 보조: ${sub.name}`:''}`;
     const url = document.getElementById('shareLink').value;
     if (navigator.share){ try{ await navigator.share({title:'BJJ 롤 스타일', text, url}); }catch(_){}} 
     else { alert('이 기기에서는 기본 공유가 지원되지 않아요. 링크를 복사해 공유해주세요!'); }
@@ -342,45 +534,37 @@ function showResult(){
   document.getElementById('retryBtn').onclick = ()=>{ location.hash=''; location.reload(); };
 }
 
-/* ========== 네비게이션 ========== */
+/* ========= 네비게이션 ========= */
 prevBtn.addEventListener('click', ()=>{
-  if(currentIndex>0) currentIndex--;
-  renderQuestion(currentIndex);
+  if(idx>0) idx--;
+  renderQuestion(idx);
 });
 nextBtn.addEventListener('click', ()=>{
-  const q = QUESTIONS[currentIndex];
+  const q = Q[idx];
   if(answers[q.id]===undefined){ alert('선택해주세요.'); return; }
-  if(currentIndex<QUESTIONS.length-1) currentIndex++;
-  renderQuestion(currentIndex);
+  if(idx<Q.length-1) idx++;
+  renderQuestion(idx);
 });
-document.querySelector('form').addEventListener('submit', (e)=>{
-  e.preventDefault();
-  const q = QUESTIONS[currentIndex];
-  if(answers[q.id]===undefined){ alert('선택해주세요.'); return; }
-  showResult();
-  window.scrollTo({top:0, behavior:'smooth'});
-});
+submitBtn.addEventListener('click', showResult);
 
-/* ========== 해시 복원(공유 링크) ========== */
+/* ========= 공유 링크 복원 ========= */
 function tryRestoreFromHash(){
   const m = location.hash.match(/#r=([^&]+)/);
   if(!m) return false;
   try{
     const json = decodeURIComponent(escape(atob(m[1])));
     const payload = JSON.parse(json);
-    if (!payload || payload.v!==2) return false;
-    // 결과 보기 전용 — 점수만 복원해서 리포트 바로 노출
-    Object.keys(answers).forEach(k=>delete answers[k]);
-    // 미니 렌더(진행바 채우기)
-    currentIndex = QUESTIONS.length-1;
-    renderQuestion(currentIndex);
-    dim.guard = payload.g||0; dim.top = payload.t||0;
+    if (!payload || payload.v!==4) return false;
+    // 진행바/네비 시각만 맞추고 바로 결과 표시
+    idx = Q.length-1; renderQuestion(idx);
+    AXES.forEach(a=>score[a]=payload.score?.[a]||0);
+    Q.forEach(q=>answers[q.id]=0); // 진행바 100% 표현용
     showResult();
     return true;
   }catch(e){ return false; }
 }
 
-/* 초기 렌더 */
+/* ========= 초기 렌더 ========= */
 if(!tryRestoreFromHash()){ renderQuestion(0); }
 </script>
 </body>
